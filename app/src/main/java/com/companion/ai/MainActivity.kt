@@ -17,11 +17,17 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.Locale
 
 class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
@@ -162,23 +168,65 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val generativeModel = GenerativeModel(
-                    modelName = "gemini-1.5-flash",
-                    apiKey = apiKey
-                )
-                val systemPrompt = "You are a helpful autonomous Android AI assistant. Always respond concisely and clearly in Tamil language only. User query: $prompt"
-                val response = generativeModel.generateContent(systemPrompt)
-                val reply = response.text ?: "மன்னிக்கவும், பதில் கிடைக்கவில்லை."
-
-                withContext(Dispatchers.Main) {
-                    statusText.text = "பதில்:\n$reply"
-                    speakTamil(reply)
+                // gemini-2.5-flash-lite மாடலின் நேரடி REST எண்ட்பாயிண்ட்
+                val url = URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=$apiKey")
+                val connection = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                    doOutput = true
+                    doInput = true
+                    connectTimeout = 15000
+                    readTimeout = 15000
                 }
+
+                val jsonPayload = JSONObject().apply {
+                    val contentsArray = JSONArray()
+                    val contentObj = JSONObject()
+                    val partsArray = JSONArray()
+                    val partObj = JSONObject().apply {
+                        put("text", "You are an autonomous Android AI assistant. Always respond concisely and clearly in Tamil language only. User question: $prompt")
+                    }
+                    partsArray.put(partObj)
+                    contentObj.put("parts", partsArray)
+                    contentsArray.put(contentObj)
+                    put("contents", contentsArray)
+                }
+
+                OutputStreamWriter(connection.outputStream).use { writer ->
+                    writer.write(jsonPayload.toString())
+                    writer.flush()
+                }
+
+                val responseCode = connection.responseCode
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val responseStr = BufferedReader(InputStreamReader(connection.inputStream)).use { it.readText() }
+                    val responseJson = JSONObject(responseStr)
+                    val candidates = responseJson.optJSONArray("candidates")
+                    val reply = if (candidates != null && candidates.length() > 0) {
+                        val content = candidates.getJSONObject(0).optJSONObject("content")
+                        val parts = content?.optJSONArray("parts")
+                        parts?.getJSONObject(0)?.optString("text") ?: "பதில் கிடைக்கவில்லை."
+                    } else {
+                        "பதில் கிடைக்கவில்லை."
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        statusText.text = "பதில்:\n$reply"
+                        speakTamil(reply)
+                    }
+                } else {
+                    val errorStr = BufferedReader(InputStreamReader(connection.errorStream ?: connection.inputStream)).use { it.readText() }
+                    withContext(Dispatchers.Main) {
+                        statusText.text = "API பிழை ($responseCode):\n$errorStr"
+                        speakTamil("தகவல் பெறுவதில் பிழை ஏற்பட்டுள்ளது.")
+                    }
+                }
+                connection.disconnect()
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     val errorMsg = "பிழை: ${e.localizedMessage}"
                     statusText.text = errorMsg
-                    speakTamil("தகவல் பெறுவதில் பிழை ஏற்பட்டுள்ளது.")
+                    speakTamil("இணைப்பில் பிழை ஏற்பட்டுள்ளது.")
                 }
             }
         }
