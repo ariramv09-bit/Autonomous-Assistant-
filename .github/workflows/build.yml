@@ -24,7 +24,7 @@ jobs:
         wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
         unzip -q gradle-8.2-bin.zip
         export PATH=$PWD/gradle-8.2/bin:$PATH
-        gradle assembleDebug --no-daemon --stacktrace
+        gradle assembleDebug --no-daemon
 
     - name: Upload APK
       if: always()
