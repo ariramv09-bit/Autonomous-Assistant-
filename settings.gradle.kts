@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "AIPartner"
+rootProject.name = "Autonomous-Assistant-"
 include(":app")
