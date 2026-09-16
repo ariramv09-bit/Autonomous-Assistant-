@@ -38,6 +38,9 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var apiKeyInput: EditText
     private val RECORD_AUDIO_REQUEST_CODE = 101
 
+    // உரையாடல் நினைவகப் பட்டியல் (Chat History Memory)
+    private val conversationHistory = JSONArray()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -93,6 +96,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             }
         }
 
+        val clearMemoryBtn = Button(this).apply {
+            text = "நினைவகத்தை அழி (Clear Memory)"
+            setOnClickListener {
+                while (conversationHistory.length() > 0) {
+                    conversationHistory.remove(0)
+                }
+                statusText.text = "நினைவகம் அழிக்கப்பட்டது. புதிதாகத் தொடங்கலாம்."
+                Toast.makeText(this@MainActivity, "நினைவகம் அழிக்கப்பட்டது!", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         statusText = TextView(this).apply {
             text = "மைக் பட்டனைத் தொட்டு தமிழில் பேசவும்..."
             textSize = 16f
@@ -104,6 +118,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         layout.addView(saveKeyBtn)
         layout.addView(settingsBtn)
         layout.addView(speakBtn)
+        layout.addView(clearMemoryBtn)
         layout.addView(statusText)
 
         setContentView(layout)
@@ -147,7 +162,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 if (!matches.isNullOrEmpty()) {
                     val userQuery = matches[0]
                     statusText.text = "நீங்கள் கேட்டது: $userQuery\n\nAI சிந்திக்கிறது..."
-                    askGemini(userQuery)
+                    askGeminiWithMemoryAndSearch(userQuery)
                 }
             }
             override fun onPartialResults(partialResults: Bundle?) {}
@@ -155,7 +170,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         })
     }
 
-    private fun askGemini(prompt: String) {
+    private fun askGeminiWithMemoryAndSearch(prompt: String) {
         val prefs = getSharedPreferences("AI_PARTNER_PREFS", Context.MODE_PRIVATE)
         val apiKey = prefs.getString("GEMINI_API_KEY", "") ?: ""
 
@@ -166,30 +181,55 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
 
+        // பயனர் உள்ளீட்டை நினைவகத்தில் (History) சேர்த்தல்
+        val userTurn = JSONObject().apply {
+            put("role", "user")
+            val parts = JSONArray().apply {
+                put(JSONObject().apply { put("text", prompt) })
+            }
+            put("parts", parts)
+        }
+        conversationHistory.put(userTurn)
+
+        // நினைவகம் அதிக பாரமாகாமல் இருக்க கடைசி 10 உரையாடல்களை மட்டும் வைத்திருத்தல்
+        while (conversationHistory.length() > 10) {
+            conversationHistory.remove(0)
+        }
+
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // கூகுள் பரிந்துரைத்த gemini-3.5-flash-lite நேரடி எண்ட்பாயிண்ட்
                 val url = URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=$apiKey")
                 val connection = (url.openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     setRequestProperty("Content-Type", "application/json; charset=utf-8")
                     doOutput = true
                     doInput = true
-                    connectTimeout = 15000
-                    readTimeout = 15000
+                    connectTimeout = 20000
+                    readTimeout = 20000
                 }
 
+                // Payload: System Instruction + Memory + Google Search Grounding Tool
                 val jsonPayload = JSONObject().apply {
-                    val contentsArray = JSONArray()
-                    val contentObj = JSONObject()
-                    val partsArray = JSONArray()
-                    val partObj = JSONObject().apply {
-                        put("text", "You are an autonomous Android AI assistant. Always respond concisely and clearly in Tamil language only. User question: $prompt")
+                    val sysInstruction = JSONObject().apply {
+                        val parts = JSONArray().apply {
+                            put(JSONObject().apply {
+                                put("text", "You are an autonomous Android AI companion. Always respond concisely and clearly in Tamil. Use live Google search if asked about current events, weather, or real-time info.")
+                            })
+                        }
+                        put("parts", parts)
                     }
-                    partsArray.put(partObj)
-                    contentObj.put("parts", partsArray)
-                    contentsArray.put(contentObj)
-                    put("contents", contentsArray)
+                    put("system_instruction", sysInstruction)
+
+                    // உரையாடல் நினைவகம் முழுவதும் இணைக்கப்படுகிறது
+                    put("contents", conversationHistory)
+
+                    // நேரடி கூகுள் தேடல் கருவி (Google Search Grounding)
+                    val toolsArray = JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("google_search", JSONObject())
+                        })
+                    }
+                    put("tools", toolsArray)
                 }
 
                 OutputStreamWriter(connection.outputStream).use { writer ->
@@ -205,10 +245,29 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     val reply = if (candidates != null && candidates.length() > 0) {
                         val content = candidates.getJSONObject(0).optJSONObject("content")
                         val parts = content?.optJSONArray("parts")
-                        parts?.getJSONObject(0)?.optString("text") ?: "பதில் கிடைக்கவில்லை."
+                        var extractedText = ""
+                        if (parts != null) {
+                            for (i in 0 until parts.length()) {
+                                val p = parts.getJSONObject(i)
+                                if (p.has("text")) {
+                                    extractedText += p.getString("text")
+                                }
+                            }
+                        }
+                        if (extractedText.isNotEmpty()) extractedText else "பதில் கிடைக்கவில்லை."
                     } else {
                         "பதில் கிடைக்கவில்லை."
                     }
+
+                    // AI அளித்த பதிலை நினைவகத்தில் சேர்த்தல்
+                    val modelTurn = JSONObject().apply {
+                        put("role", "model")
+                        val parts = JSONArray().apply {
+                            put(JSONObject().apply { put("text", reply) })
+                        }
+                        put("parts", parts)
+                    }
+                    conversationHistory.put(modelTurn)
 
                     withContext(Dispatchers.Main) {
                         statusText.text = "பதில்:\n$reply"
