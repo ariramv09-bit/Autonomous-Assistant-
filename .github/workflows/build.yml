@@ -19,16 +19,10 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v3
-      with:
-        gradle-version: '8.2'
-
-    - name: Generate Wrapper and Build APK
+    - name: Install Gradle & Build APK
       run: |
-        gradle wrapper --gradle-version 8.2
-        chmod +x gradlew
-        ./gradlew assembleDebug --stacktrace
+        sudo apt-get update && sudo apt-get install -y gradle
+        gradle assembleDebug --stacktrace --no-daemon
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
