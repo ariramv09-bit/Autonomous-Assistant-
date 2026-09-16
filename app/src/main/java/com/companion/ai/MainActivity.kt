@@ -163,7 +163,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val generativeModel = GenerativeModel(
-                    modelName = "gemini-1.5-flash",
+                    modelName = "gemini-pro",
                     apiKey = apiKey
                 )
                 val systemPrompt = "You are a helpful autonomous Android AI assistant. Always respond concisely and clearly in Tamil language only. User query: $prompt"
