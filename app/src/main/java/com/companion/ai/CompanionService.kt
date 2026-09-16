@@ -40,7 +40,6 @@ class CompanionService : AccessibilityService(), TextToSpeech.OnInitListener {
 
     private var windowManager: WindowManager? = null
     private var floatingBubble: Button? = null
-    private lateinit var layoutParams: WindowManager.LayoutParams
     private var tts: TextToSpeech? = null
     private var speechRecognizer: SpeechRecognizer? = null
     private var isBusy = false
@@ -55,7 +54,7 @@ class CompanionService : AccessibilityService(), TextToSpeech.OnInitListener {
     private fun showFloatingBubble() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        layoutParams = WindowManager.LayoutParams(
+        val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
@@ -82,10 +81,11 @@ class CompanionService : AccessibilityService(), TextToSpeech.OnInitListener {
                 private var isClick = false
 
                 override fun onTouch(v: View?, event: MotionEvent?): Boolean {
+                    val currentParams = layoutParams as WindowManager.LayoutParams
                     when (event?.action) {
                         MotionEvent.ACTION_DOWN -> {
-                            initialX = layoutParams.x
-                            initialY = layoutParams.y
+                            initialX = currentParams.x
+                            initialY = currentParams.y
                             initialTouchX = event.rawX
                             initialTouchY = event.rawY
                             isClick = true
@@ -97,9 +97,9 @@ class CompanionService : AccessibilityService(), TextToSpeech.OnInitListener {
                             if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
                                 isClick = false
                             }
-                            layoutParams.x = initialX + diffX
-                            layoutParams.y = initialY + diffY
-                            windowManager?.updateViewLayout(floatingBubble, layoutParams)
+                            currentParams.x = initialX + diffX
+                            currentParams.y = initialY + diffY
+                            windowManager?.updateViewLayout(floatingBubble, currentParams)
                             return true
                         }
                         MotionEvent.ACTION_UP -> {
@@ -115,7 +115,7 @@ class CompanionService : AccessibilityService(), TextToSpeech.OnInitListener {
         }
 
         try {
-            windowManager?.addView(floatingBubble, layoutParams)
+            windowManager?.addView(floatingBubble, params)
         } catch (e: Exception) {
             e.printStackTrace()
         }
