@@ -14,22 +14,19 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up JDK 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Accept Android Licenses & Build APK
+    - name: Check Project Structure
       run: |
-        yes | sdkmanager --licenses || true
+        echo "=== FOLDER STRUCTURE ==="
+        find . -maxdepth 4 -not -path '*/.*'
+
+    - name: Build Debug APK
+      run: |
         wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
         unzip -q gradle-8.2-bin.zip
         export PATH=$PWD/gradle-8.2/bin:$PATH
-        gradle assembleDebug --info || gradle assembleDebug --stacktrace
-
-    - name: Upload APK
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: AI-Partner-APK
-        path: app/build/outputs/apk/debug/app-debug.apk
+        gradle assembleDebug -S
