@@ -168,8 +168,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // gemini-2.5-flash-lite மாடலின் நேரடி REST எண்ட்பாயிண்ட்
-                val url = URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=$apiKey")
+                // கூகுள் பரிந்துரைத்த gemini-3.5-flash-lite நேரடி எண்ட்பாயிண்ட்
+                val url = URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=$apiKey")
                 val connection = (url.openConnection() as HttpURLConnection).apply {
                     requestMethod = "POST"
                     setRequestProperty("Content-Type", "application/json; charset=utf-8")
