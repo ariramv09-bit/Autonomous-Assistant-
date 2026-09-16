@@ -193,36 +193,7 @@ class CompanionService : AccessibilityService(), TextToSpeech.OnInitListener {
 
                     withContext(Dispatchers.Main) {
                         speakTamil(tamilReply)
-                        when (action) {
-                            "CLICK" -> {
-                                if (x > 0 && y > 0) {
-                                    performVirtualClick(x.toFloat(), y.toFloat())
-                                }
-                            }
-                            "SCROLL_DOWN" -> {
-                                val path = Path().apply {
-                                    moveTo(500f, 1200f)
-                                    lineTo(500f, 400f)
-                                }
-                                dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 300)).build(), null, null)
-                            }
-                            "SCROLL_UP" -> {
-                                val path = Path().apply {
-                                    moveTo(500f, 400f)
-                                    lineTo(500f, 1200f)
-                                }
-                                dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 300)).build(), null, null)
-                            }
-                            "GLOBAL_HOME" -> {
-                                performGlobalAction(GLOBAL_ACTION_HOME)
-                            }
-                            "GLOBAL_BACK" -> {
-                                performGlobalAction(GLOBAL_ACTION_BACK)
-                            }
-                            else -> {
-                                // SPEAK_ONLY அல்லது பிற நிலைகளுக்கு கூடுதல் செயல்பாடு தேவையில்லை
-                            }
-                        }
+                        dispatchAgentAction(action, x, y)
                     }
                 }
                 connection.disconnect()
@@ -232,6 +203,36 @@ class CompanionService : AccessibilityService(), TextToSpeech.OnInitListener {
                 }
             } finally {
                 isBusy = false
+            }
+        }
+    }
+
+    private fun dispatchAgentAction(action: String, x: Int, y: Int) {
+        when (action) {
+            "CLICK" -> {
+                if (x > 0 && y > 0) {
+                    performVirtualClick(x.toFloat(), y.toFloat())
+                }
+            }
+            "SCROLL_DOWN" -> {
+                val path = Path().apply {
+                    moveTo(500f, 1200f)
+                    lineTo(500f, 400f)
+                }
+                dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 300)).build(), null, null)
+            }
+            "SCROLL_UP" -> {
+                val path = Path().apply {
+                    moveTo(500f, 400f)
+                    lineTo(500f, 1200f)
+                }
+                dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 300)).build(), null, null)
+            }
+            "GLOBAL_HOME" -> {
+                performGlobalAction(GLOBAL_ACTION_HOME)
+            }
+            "GLOBAL_BACK" -> {
+                performGlobalAction(GLOBAL_ACTION_BACK)
             }
         }
     }
