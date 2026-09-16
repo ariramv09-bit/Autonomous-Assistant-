@@ -14,15 +14,17 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up JDK 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Install Gradle & Build APK
+    - name: Download Gradle 8.2 and Build APK
       run: |
-        sudo apt-get update && sudo apt-get install -y gradle
-        gradle assembleDebug --stacktrace --no-daemon
+        wget -q https://services.gradle.org/distributions/gradle-8.2-bin.zip
+        unzip -q gradle-8.2-bin.zip
+        export PATH=$PWD/gradle-8.2/bin:$PATH
+        gradle assembleDebug --no-daemon --stacktrace
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
