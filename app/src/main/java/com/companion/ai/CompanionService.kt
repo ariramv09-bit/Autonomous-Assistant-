@@ -194,7 +194,11 @@ class CompanionService : AccessibilityService(), TextToSpeech.OnInitListener {
                     withContext(Dispatchers.Main) {
                         speakTamil(tamilReply)
                         when (action) {
-                            "CLICK" -> if (x > 0 && y > 0) performVirtualClick(x.toFloat(), y.toFloat())
+                            "CLICK" -> {
+                                if (x > 0 && y > 0) {
+                                    performVirtualClick(x.toFloat(), y.toFloat())
+                                }
+                            }
                             "SCROLL_DOWN" -> {
                                 val path = Path().apply {
                                     moveTo(500f, 1200f)
@@ -209,8 +213,15 @@ class CompanionService : AccessibilityService(), TextToSpeech.OnInitListener {
                                 }
                                 dispatchGesture(GestureDescription.Builder().addStroke(GestureDescription.StrokeDescription(path, 0, 300)).build(), null, null)
                             }
-                            "GLOBAL_HOME" -> performGlobalAction(GLOBAL_ACTION_HOME)
-                            "GLOBAL_BACK" -> performGlobalAction(GLOBAL_ACTION_BACK)
+                            "GLOBAL_HOME" -> {
+                                performGlobalAction(GLOBAL_ACTION_HOME)
+                            }
+                            "GLOBAL_BACK" -> {
+                                performGlobalAction(GLOBAL_ACTION_BACK)
+                            }
+                            else -> {
+                                // SPEAK_ONLY அல்லது பிற நிலைகளுக்கு கூடுதல் செயல்பாடு தேவையில்லை
+                            }
                         }
                     }
                 }
