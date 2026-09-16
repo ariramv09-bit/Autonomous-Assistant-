@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var apiKeyInput: EditText
     private val RECORD_AUDIO_REQUEST_CODE = 101
 
-    // உரையாடல் நினைவகப் பட்டியல் (Chat History Memory)
+    // தொடர் உரையாடல் நினைவகம் (Multi-Turn Chat History)
     private val conversationHistory = JSONArray()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -162,7 +162,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 if (!matches.isNullOrEmpty()) {
                     val userQuery = matches[0]
                     statusText.text = "நீங்கள் கேட்டது: $userQuery\n\nAI சிந்திக்கிறது..."
-                    askGeminiWithMemoryAndSearch(userQuery)
+                    askGeminiWithMemory(userQuery)
                 }
             }
             override fun onPartialResults(partialResults: Bundle?) {}
@@ -170,7 +170,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         })
     }
 
-    private fun askGeminiWithMemoryAndSearch(prompt: String) {
+    private fun askGeminiWithMemory(prompt: String) {
         val prefs = getSharedPreferences("AI_PARTNER_PREFS", Context.MODE_PRIVATE)
         val apiKey = prefs.getString("GEMINI_API_KEY", "") ?: ""
 
@@ -181,7 +181,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             return
         }
 
-        // பயனர் உள்ளீட்டை நினைவகத்தில் (History) சேர்த்தல்
+        // பயனர் கேள்வியை நினைவகத்தில் சேர்த்தல்
         val userTurn = JSONObject().apply {
             put("role", "user")
             val parts = JSONArray().apply {
@@ -191,7 +191,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         }
         conversationHistory.put(userTurn)
 
-        // நினைவகம் அதிக பாரமாகாமல் இருக்க கடைசி 10 உரையாடல்களை மட்டும் வைத்திருத்தல்
+        // நினைவகம் அதிக டோக்கன்களைப் பயன்படுத்தாமல் இருக்க கடைசி 10 உரையாடல்கள் மட்டும்
         while (conversationHistory.length() > 10) {
             conversationHistory.remove(0)
         }
@@ -204,32 +204,21 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     setRequestProperty("Content-Type", "application/json; charset=utf-8")
                     doOutput = true
                     doInput = true
-                    connectTimeout = 20000
-                    readTimeout = 20000
+                    connectTimeout = 15000
+                    readTimeout = 15000
                 }
 
-                // Payload: System Instruction + Memory + Google Search Grounding Tool
                 val jsonPayload = JSONObject().apply {
                     val sysInstruction = JSONObject().apply {
                         val parts = JSONArray().apply {
                             put(JSONObject().apply {
-                                put("text", "You are an autonomous Android AI companion. Always respond concisely and clearly in Tamil. Use live Google search if asked about current events, weather, or real-time info.")
+                                put("text", "You are an autonomous Android AI companion. Always respond concisely, accurately, and politely in Tamil language only.")
                             })
                         }
                         put("parts", parts)
                     }
                     put("system_instruction", sysInstruction)
-
-                    // உரையாடல் நினைவகம் முழுவதும் இணைக்கப்படுகிறது
                     put("contents", conversationHistory)
-
-                    // நேரடி கூகுள் தேடல் கருவி (Google Search Grounding)
-                    val toolsArray = JSONArray().apply {
-                        put(JSONObject().apply {
-                            put("google_search", JSONObject())
-                        })
-                    }
-                    put("tools", toolsArray)
                 }
 
                 OutputStreamWriter(connection.outputStream).use { writer ->
