@@ -25,19 +25,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = "17"
-    }
-    packaging {
-        resources {
-            pickFirsts += "META-INF/INDEX.LIST"
-            pickFirsts += "META-INF/DEPENDENCIES"
-            pickFirsts += "META-INF/io.netty.versions.properties"
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
+        jvmTarget = "1.8"
     }
 }
 
@@ -45,6 +37,8 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
-    implementation("com.google.ai.client.generativeai:generativeai:0.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // Google Gemini SDK Version 0.9.0 (Supports gemini-1.5-flash)
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 }
